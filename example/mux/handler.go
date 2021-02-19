@@ -26,6 +26,16 @@ func (h *Handler) detach(conn redcon.Conn, cmd redcon.Command) {
 
 		c.WriteString("OK")
 		c.Flush()
+		for {
+			cmd, err := c.ReadMyCommand()
+			if err != nil {
+				log.Fatalf("readMyCommnad fail %v", err)
+				return
+			}
+			c.WriteString("echo:" + string(cmd.Args[0]))
+			c.Flush()
+			c.Reclaim(&cmd)
+		}
 	}(detachedConn)
 }
 

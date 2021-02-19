@@ -35,8 +35,8 @@ func getBuf(size int) *[]byte {
 	return buf
 }
 
-// PutBuf returns a buffer to the pool.
-func PutBuf(buf *[]byte) {
+// putBuf returns a buffer to the pool.
+func putBuf(buf *[]byte) {
 	bufPool.Put(buf)
 }
 
@@ -59,8 +59,8 @@ func getBufs(size int) *[][]byte {
 	return buf
 }
 
-// PutBufs returns a buffer to the pool.
-func PutBufs(buf *[][]byte) {
+// putBufs returns a buffer to the pool.
+func putBufs(buf *[][]byte) {
 	bufsPool.Put(buf)
 }
 

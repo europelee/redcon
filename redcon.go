@@ -497,8 +497,12 @@ type DetachedConn interface {
 	Conn
 	// ReadCommand reads the next client command.
 	ReadCommand() (Command, error)
+	// ReadMyCommand another readCommand with sync.pool
+	ReadMyCommand() (Command, error)
 	// Flush flushes any writes to the network.
 	Flush() error
+	//
+	Reclaim(cmd *Command)
 }
 
 // Detach removes the current connection from the server loop and returns
@@ -529,6 +533,16 @@ func (dc *detachedConn) ReadMyCommand() (Command, error) {
 		return Command{}, err
 	}
 	return Command{Args: args}, nil
+}
+
+func (dc *detachedConn) Reclaim(cmd *Command) {
+	if cmd == nil {
+		return
+	}
+	for i := range cmd.Args {
+		putBuf(&(cmd.Args[i]))
+	}
+	putBufs(&(cmd.Args))
 }
 
 // ReadCommand read the next command from the client.
