@@ -14,6 +14,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/valyala/bytebufferpool"
 )
 
 // TestRandomCommands fills a bunch of random commands and test various
@@ -737,4 +739,97 @@ func TestPubSub(t *testing.T) {
 	<-done
 	// stop the timeout
 	final <- true
+}
+
+func BenchmarkReadMyCommand(b *testing.B) {
+	bufDefaultSize = 409600
+	var dc *detachedConn
+	dc = &detachedConn{conn: &conn{}}
+	r, w := io.Pipe()
+	dc.conn.rd = NewReader(r)
+	exit := make(chan interface{})
+	signal := make(chan interface{})
+	go func() {
+		defer close(exit)
+		buf := bytebufferpool.Get()
+		buf.WriteString("*4\r\n$5\r\nHMSET\r\n$15\r\nIP:08080808:QOS\r\n$9\r\ntest-pop1\r\n$56\r\nMixping|1611047985|163.171.239.57|163.188.71.1|11|0|0|G0\r\n")
+
+		for {
+			_, err := buf.WriteTo(w)
+			if err != nil {
+				return
+			}
+			signal <- 1
+		}
+	}()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		//fmt.Fprint(w, "*4\r\n$5\r\nHMSET\r\n$15\r\nIP:08080808:QOS\r\n$9\r\ntest-pop1\r\n$56\r\nMixping|1611047985|163.171.239.57|163.188.71.1|11|0|0|G0\r\n")
+
+		cmd, err := dc.ReadMyCommand()
+		if err != nil {
+			if err == io.EOF {
+				b.Logf("eof")
+				break
+			}
+			b.Fatalf("error %v", err)
+			return
+		}
+		if len(cmd.Args) != 4 {
+			b.Fatalf("parse fail %v", err)
+			return
+		}
+
+		for i := range cmd.Args {
+			PutBuf(&(cmd.Args[i]))
+		}
+		PutBufs(&(cmd.Args))
+		<-signal
+	}
+	w.Close()
+	<-exit
+	b.StopTimer()
+}
+
+func BenchmarkReadCommand(b *testing.B) {
+	bufDefaultSize = 409600
+	var dc *detachedConn
+	dc = &detachedConn{conn: &conn{}}
+	r, w := io.Pipe()
+	dc.conn.rd = NewReader(r)
+	exit := make(chan interface{})
+	signal := make(chan interface{})
+	go func() {
+		defer close(exit)
+		buf := bytebufferpool.Get()
+		buf.WriteString("*4\r\n$5\r\nHMSET\r\n$15\r\nIP:08080808:QOS\r\n$9\r\ntest-pop1\r\n$56\r\nMixping|1611047985|163.171.239.57|163.188.71.1|11|0|0|G0\r\n")
+
+		for {
+			_, err := buf.WriteTo(w)
+			if err != nil {
+				return
+			}
+			signal <- 1
+		}
+	}()
+
+	for i := 0; i < b.N; i++ {
+		cmd, err := dc.ReadCommand()
+		if err != nil {
+			if err == io.EOF {
+				b.Logf("eof")
+				break
+			}
+			b.Fatalf("error %v", err)
+			return
+		}
+		if len(cmd.Args) != 4 {
+			b.Fatalf("parse fail %v", err)
+			return
+		}
+		<-signal
+	}
+	w.Close()
+	<-exit
+	b.StopTimer()
 }

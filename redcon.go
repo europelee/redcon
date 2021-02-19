@@ -25,6 +25,10 @@ var (
 	errTooMuchData            = errors.New("too much data")
 )
 
+var (
+	bufDefaultSize = 4096
+)
+
 type errProtocol struct {
 	msg string
 }
@@ -519,6 +523,14 @@ func (dc *detachedConn) Flush() error {
 	return dc.conn.wr.Flush()
 }
 
+func (dc *detachedConn) ReadMyCommand() (Command, error) {
+	args, err := readMyCommand(dc.rd.rd)
+	if err != nil {
+		return Command{}, err
+	}
+	return Command{Args: args}, nil
+}
+
 // ReadCommand read the next command from the client.
 func (dc *detachedConn) ReadCommand() (Command, error) {
 	if len(dc.cmds) > 0 {
@@ -687,7 +699,7 @@ type Reader struct {
 func NewReader(rd io.Reader) *Reader {
 	return &Reader{
 		rd:  bufio.NewReader(rd),
-		buf: make([]byte, 4096),
+		buf: make([]byte, bufDefaultSize),
 	}
 }
 
@@ -717,8 +729,8 @@ func parseInt(b []byte) (int, bool) {
 func (rd *Reader) readCommands(leftover *int) ([]Command, error) {
 	var cmds []Command
 	b := rd.buf[rd.start:rd.end]
-	if rd.end-rd.start == 0 && len(rd.buf) > 4096 {
-		rd.buf = rd.buf[:4096]
+	if rd.end-rd.start == 0 && len(rd.buf) > bufDefaultSize {
+		//rd.buf = rd.buf[:bufDefaultSize] // more trickies
 		rd.start = 0
 		rd.end = 0
 	}
