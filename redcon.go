@@ -41,6 +41,8 @@ func (err *errProtocol) Error() string {
 type Conn interface {
 	// RemoteAddr returns the remote address of the client connection.
 	RemoteAddr() string
+	// Start connection
+	Start() error
 	// Close closes the connection.
 	Close() error
 	// WriteError writes an error to the client.
@@ -122,7 +124,7 @@ func NewServer(addr string,
 	handler func(conn Conn, cmd Command),
 	accept func(conn Conn) bool,
 	closed func(conn Conn, err error),
-) *Server {
+) ServerI {
 	return NewServerNetwork("tcp", addr, handler, accept, closed)
 }
 
@@ -143,18 +145,31 @@ func NewServerNetwork(
 	handler func(conn Conn, cmd Command),
 	accept func(conn Conn) bool,
 	closed func(conn Conn, err error),
-) *Server {
+) ServerI {
+	var s ServerI
 	if handler == nil {
 		panic("handler is nil")
 	}
-	s := &Server{
-		net:     net,
-		laddr:   laddr,
-		handler: handler,
-		accept:  accept,
-		closed:  closed,
-		conns:   make(map[*conn]bool),
+	if strings.EqualFold(net, "quic") {
+		s = &QUICServer{
+			net:     net,
+			laddr:   laddr,
+			handler: handler,
+			accept:  accept,
+			closed:  closed,
+			conns:   make(map[*quicConn]bool),
+		}
+	} else {
+		s = &Server{
+			net:     net,
+			laddr:   laddr,
+			handler: handler,
+			accept:  accept,
+			closed:  closed,
+			conns:   make(map[*conn]bool),
+		}
 	}
+
 	return s
 }
 
@@ -400,6 +415,10 @@ func handle(s *Server, c *conn) {
 	err = func() error {
 		// read commands and feed back to the client
 		for {
+			if c.detached {
+				// client has been detached
+				return errDetached
+			}
 			// read pipeline commands
 			if c.idleClose != 0 {
 				c.conn.SetReadDeadline(time.Now().Add(c.idleClose))
@@ -449,6 +468,10 @@ type conn struct {
 	closed    bool
 	cmds      []Command
 	idleClose time.Duration
+}
+
+func (c *conn) Start() error {
+	return nil
 }
 
 func (c *conn) Close() error {
@@ -569,6 +592,14 @@ type Command struct {
 	Raw []byte
 	// Args is a series of arguments that make up the command.
 	Args [][]byte
+}
+
+type ServerI interface {
+	Addr() net.Addr
+	Close() error
+	ListenAndServe() error
+	ListenServeAndSignal(signal chan error) error
+	SetIdleClose(dur time.Duration)
 }
 
 // Server defines a server for clients for managing client connections.
