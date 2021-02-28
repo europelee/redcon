@@ -38,9 +38,7 @@ type quicConn struct {
 
 func (c *quicConn) Detach() DetachedConn {
 	c.detached = true
-	// cmds := c.cmds
-	c.cmds = nil
-	return &quicDetachedConn{quicConn: c, cmds: nil}
+	return &quicDetachedConn{quicConn: c}
 }
 
 func (c *quicConn) Start() error {
@@ -79,18 +77,18 @@ func (c *quicConn) WriteRaw(data []byte)        { c.wr.WriteRaw(data) }
 func (c *quicConn) WriteAny(v interface{})      { c.wr.WriteAny(v) }
 func (c *quicConn) RemoteAddr() string          { return c.addr }
 func (c *quicConn) ReadPipeline() []Command {
-	cmds := c.cmds
-	c.cmds = nil
-	return cmds
+	return nil
 }
 func (c *quicConn) PeekPipeline() []Command {
-	return c.cmds
+	return nil
 }
 func (c *quicConn) NetConn() net.Conn {
 	return nil
 }
 
 // QUICServer defines a quic server for clients for managing client connections.
+// only support DetachedConn, and it means that handler cb not used
+// how use, please refer to example/clone.go 'quic'
 type QUICServer struct {
 	mu        sync.Mutex
 	net       string
@@ -232,7 +230,6 @@ func generateTLSConfig() *tls.Config {
 
 type quicDetachedConn struct {
 	*quicConn
-	cmds []Command
 }
 
 // Flush writes and Write* calls to the client.

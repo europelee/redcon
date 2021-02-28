@@ -524,7 +524,7 @@ type DetachedConn interface {
 	ReadMyCommand() (Command, error)
 	// Flush flushes any writes to the network.
 	Flush() error
-	//
+	// Reclaim called with ReadMyCommand
 	Reclaim(cmd *Command)
 }
 
@@ -533,6 +533,7 @@ type DetachedConn interface {
 // The detached connection must be closed by calling Close() when done.
 // All writes such as WriteString() will not be written to the client
 // until Flush() is called.
+// ReadMyCommand and ReadCommand can not be used at the same time on a DetachedConn
 func (c *conn) Detach() DetachedConn {
 	c.detached = true
 	cmds := c.cmds
@@ -551,6 +552,15 @@ func (dc *detachedConn) Flush() error {
 }
 
 func (dc *detachedConn) ReadMyCommand() (Command, error) {
+	if len(dc.cmds) > 0 {
+		cmd := dc.cmds[0]
+		if len(dc.cmds) == 1 {
+			dc.cmds = nil
+		} else {
+			dc.cmds = dc.cmds[1:]
+		}
+		return cmd, nil
+	}
 	args, err := readMyCommand(dc.rd.rd)
 	if err != nil {
 		return Command{}, err
@@ -775,7 +785,7 @@ func (rd *Reader) readCommands(leftover *int) ([]Command, error) {
 	var cmds []Command
 	b := rd.buf[rd.start:rd.end]
 	if rd.end-rd.start == 0 && len(rd.buf) > bufDefaultSize {
-		//rd.buf = rd.buf[:bufDefaultSize] // more trickies
+		//rd.buf = rd.buf[:bufDefaultSize] // todo: more trickies
 		rd.start = 0
 		rd.end = 0
 	}
@@ -967,7 +977,7 @@ func (rd *Reader) readCommands(leftover *int) ([]Command, error) {
 			// rewind the to the beginning
 			rd.start, rd.end = 0, 0
 		} else {
-			// must grow the buffer
+			// must grow the buffer, todo more tricks
 			newbuf := make([]byte, len(rd.buf)*2)
 			copy(newbuf, rd.buf)
 			rd.buf = newbuf

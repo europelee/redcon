@@ -19,6 +19,7 @@ Features
 - [TLS Support](#tls-example)
 - Compatible pub/sub support
 - Multithreaded
+- [QUIC Support](#quic-example)
 
 Installing
 ----------
@@ -156,6 +157,17 @@ The [same example](example/tls/clone.go) is also provided for serving Redcon ove
 
 ```sh
 go run example/tls/clone.go
+```
+
+QUIC Example
+-----------
+
+Redcon has QUIC support through the `ListenAndServeNetwork` function.
+
+The [same example](example/clone.go) is also provided for serving Redcon over QUIC with proto quic conf.
+
+```sh
+./clone -proto=quic
 ```
 
 Benchmarks

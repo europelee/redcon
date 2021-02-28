@@ -141,8 +141,10 @@ func test(conn redcon.Conn) {
 	conn.Start()
 	dc := conn.Detach()
 	go func(dc redcon.DetachedConn) {
-		//dc.WriteString("OK")
-		//dc.Flush()
+		if strings.EqualFold(proto, "tcp") {
+			dc.WriteString("OK")
+			dc.Flush()
+		}
 		for {
 			cmd, err := dc.ReadMyCommand()
 			if err != nil {
