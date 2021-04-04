@@ -19,48 +19,48 @@ const (
 var bufPool sync.Pool
 
 // getBuf returns a buffer with length size from the buffer pool.
-func getBuf(size int) *[]byte {
+func getBuf(size int) []byte {
 	x := bufPool.Get()
 	if x == nil {
 		b := make([]byte, size)
-		return &b
+		return b
 	}
-	buf := x.(*[]byte)
-	if cap(*buf) < size {
+	buf := x.([]byte)
+	if cap(buf) < size {
 		bufPool.Put(x)
 		b := make([]byte, size)
-		return &b
+		return b
 	}
-	*buf = (*buf)[:size]
+	buf = buf[:size]
 	return buf
 }
 
 // putBuf returns a buffer to the pool.
-func putBuf(buf *[]byte) {
+func putBuf(buf []byte) {
 	bufPool.Put(buf)
 }
 
 var bufsPool sync.Pool
 
 // getBuf returns a buffer with length size from the buffer pool.
-func getBufs(size int) *[][]byte {
+func getBufs(size int) [][]byte {
 	x := bufsPool.Get()
 	if x == nil {
 		b := make([][]byte, size)
-		return &b
+		return b
 	}
-	buf := x.(*[][]byte)
-	if cap(*buf) < size {
+	buf := x.([][]byte)
+	if cap(buf) < size {
 		bufsPool.Put(x)
 		b := make([][]byte, size)
-		return &b
+		return b
 	}
-	*buf = (*buf)[:size]
+	buf = buf[:size]
 	return buf
 }
 
 // putBufs returns a buffer to the pool.
-func putBufs(buf *[][]byte) {
+func putBufs(buf [][]byte) {
 	bufsPool.Put(buf)
 }
 
@@ -117,7 +117,7 @@ func readMyCommand(rd *bufio.Reader) ([][]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	args := *(getBufs(argCount)) // make([][]byte, argCount)
+	args := (getBufs(argCount)) // make([][]byte, argCount)
 	for i := 0; i < argCount; i++ {
 		// Read ( $<number of bytes of argument 1> CR LF )
 		if err := skipByte(rd, '$'); err != nil {
@@ -131,12 +131,11 @@ func readMyCommand(rd *bufio.Reader) ([][]byte, error) {
 		}
 
 		// Read ( <argument data> CR LF )
-		args[i] = *(getBuf(argSize)) // make([]byte, argSize)
+		args[i] = getBuf(argSize) // make([]byte, argSize)
 		_, err = io.ReadFull(rd, args[i])
 		if err != nil {
 			return nil, err
 		}
-
 		err = skipBytes(rd, []byte{CR, LF})
 		if err != nil {
 			return nil, err

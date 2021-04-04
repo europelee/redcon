@@ -573,9 +573,11 @@ func (dc *detachedConn) Reclaim(cmd *Command) {
 		return
 	}
 	for i := range cmd.Args {
-		putBuf(&(cmd.Args[i]))
+		putBuf(cmd.Args[i][:0])
+		cmd.Args[i] = nil
 	}
-	putBufs(&(cmd.Args))
+	cmd.Args = cmd.Args[:0]
+	putBufs(cmd.Args)
 }
 
 // ReadCommand read the next command from the client.

@@ -24,7 +24,7 @@ func main() {
 	var mu sync.RWMutex
 	var items = make(map[string][]byte)
 	var ps redcon.PubSub
-	go log.Printf("started server at %s", addr)
+	go log.Printf("started server at %s, proto %s", addr, proto)
 	if !strings.EqualFold(proto, "tcp") && !strings.EqualFold(proto, "quic") {
 		log.Fatalf("invalid proto %s", proto)
 	}
@@ -148,9 +148,16 @@ func test(conn redcon.Conn) {
 		for {
 			cmd, err := dc.ReadMyCommand()
 			if err != nil {
-				panic(err)
+				fmt.Println(err)
+				return
 			}
 			fmt.Println(cmd.Args)
+			if string(cmd.Args[0]) == "ping" {
+				dc.WriteString("ping")
+				dc.Flush()
+				dc.Reclaim(&cmd)
+				continue
+			}
 			dc.WriteArray(len(cmd.Args))
 			for i := range cmd.Args {
 				dc.WriteBulk(cmd.Args[i])

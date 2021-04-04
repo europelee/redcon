@@ -781,9 +781,10 @@ func BenchmarkReadMyCommand(b *testing.B) {
 		}
 
 		for i := range cmd.Args {
-			putBuf(&(cmd.Args[i]))
+			putBuf(cmd.Args[i][:0])
+			cmd.Args[i] = nil
 		}
-		putBufs(&(cmd.Args))
+		putBufs(cmd.Args[:0])
 		<-signal
 	}
 	w.Close()
